@@ -1,22 +1,27 @@
-import { Client, Opportunite, Contact } from '../types';
+import { Client, Opportunite, Contact, Project , User } from '../types';
 
+/* =======================
+   STORAGE KEYS
+======================= */
 const STORAGE_KEYS = {
   CLIENTS: 'crm_clients',
   OPPORTUNITES: 'crm_opportunites',
   CONTACTS: 'crm_contacts',
+  PROJECTS: 'crm_projects',
+  USERS: 'crm_users',
 };
 
-// Service pour les clients
+/* =======================
+   CLIENT SERVICE
+======================= */
 export const clientService = {
   getAll: (): Client[] => {
     const data = localStorage.getItem(STORAGE_KEYS.CLIENTS);
     return data ? JSON.parse(data) : [];
   },
 
-  getById: (id: string): Client | undefined => {
-    const clients = clientService.getAll();
-    return clients.find(c => c.id === id);
-  },
+  getById: (id: string): Client | undefined =>
+    clientService.getAll().find(c => c.id === id),
 
   create: (client: Omit<Client, 'id' | 'dateCreation'>): Client => {
     const clients = clientService.getAll();
@@ -29,122 +34,93 @@ export const clientService = {
     localStorage.setItem(STORAGE_KEYS.CLIENTS, JSON.stringify(clients));
     return newClient;
   },
+};
 
-  update: (id: string, updates: Partial<Client>): Client | null => {
-    const clients = clientService.getAll();
-    const index = clients.findIndex(c => c.id === id);
+/* =======================
+   PROJECT SERVICE (✅ MANQUANT)
+======================= */
+export const projectService = {
+  getAll: (): Project[] => {
+    const data = localStorage.getItem(STORAGE_KEYS.PROJECTS);
+    return data ? JSON.parse(data) : [];
+  },
+
+  getById: (id: string): Project | undefined =>
+    projectService.getAll().find(p => p.id === id),
+
+  create: (project: Omit<Project, 'id' | 'dateCreation'>): Project => {
+    const projects = projectService.getAll();
+    const newProject: Project = {
+      ...project,
+      id: Date.now().toString(),
+      dateCreation: new Date().toISOString(),
+      status: project.status ?? 'En attente',
+      priority: project.priority ?? 'Moyenne',
+    };
+    projects.push(newProject);
+    localStorage.setItem(STORAGE_KEYS.PROJECTS, JSON.stringify(projects));
+    return newProject;
+  },
+
+  update: (id: string, updates: Partial<Project>): Project | null => {
+    const projects = projectService.getAll();
+    const index = projects.findIndex(p => p.id === id);
     if (index === -1) return null;
-    
-    clients[index] = { ...clients[index], ...updates };
-    localStorage.setItem(STORAGE_KEYS.CLIENTS, JSON.stringify(clients));
-    return clients[index];
+
+    projects[index] = { ...projects[index], ...updates };
+    localStorage.setItem(STORAGE_KEYS.PROJECTS, JSON.stringify(projects));
+    return projects[index];
   },
 
   delete: (id: string): boolean => {
-    const clients = clientService.getAll();
-    const filtered = clients.filter(c => c.id !== id);
-    localStorage.setItem(STORAGE_KEYS.CLIENTS, JSON.stringify(filtered));
-    return filtered.length < clients.length;
+    const projects = projectService.getAll();
+    const filtered = projects.filter(p => p.id !== id);
+    localStorage.setItem(STORAGE_KEYS.PROJECTS, JSON.stringify(filtered));
+    return filtered.length < projects.length;
   },
 
-  search: (query: string): Client[] => {
-    const clients = clientService.getAll();
-    const lowerQuery = query.toLowerCase();
-    return clients.filter(
-      c =>
-        c.nom.toLowerCase().includes(lowerQuery) ||
-        c.email.toLowerCase().includes(lowerQuery) ||
-        c.telephone.includes(query)
-    );
+  archive: (id: string): void => {
+    projectService.update(id, { status: 'Archivé' });
   },
 };
 
-// Service pour les opportunités
+/* =======================
+   USER SERVICE (✅ MANQUANT)
+======================= */
+export const userService = {
+  getAll: (): User[] => {
+    const data = localStorage.getItem(STORAGE_KEYS.USERS);
+    return data ? JSON.parse(data) : [];
+  },
+
+  create: (user: Omit<User, 'id'>): User => {
+    const users = userService.getAll();
+    const newUser: User = {
+      ...user,
+      id: Date.now().toString(),
+    };
+    users.push(newUser);
+    localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
+    return newUser;
+  },
+};
+
+/* =======================
+   OPPORTUNITÉ SERVICE
+======================= */
 export const opportuniteService = {
   getAll: (): Opportunite[] => {
     const data = localStorage.getItem(STORAGE_KEYS.OPPORTUNITES);
     return data ? JSON.parse(data) : [];
   },
-
-  getById: (id: string): Opportunite | undefined => {
-    const opportunites = opportuniteService.getAll();
-    return opportunites.find(o => o.id === id);
-  },
-
-  getByClientId: (clientId: string): Opportunite[] => {
-    const opportunites = opportuniteService.getAll();
-    return opportunites.filter(o => o.clientId === clientId);
-  },
-
-  create: (opportunite: Omit<Opportunite, 'id' | 'dateCreation'>): Opportunite => {
-    const opportunites = opportuniteService.getAll();
-    const newOpportunite: Opportunite = {
-      ...opportunite,
-      id: Date.now().toString(),
-      dateCreation: new Date().toISOString(),
-    };
-    opportunites.push(newOpportunite);
-    localStorage.setItem(STORAGE_KEYS.OPPORTUNITES, JSON.stringify(opportunites));
-    return newOpportunite;
-  },
-
-  update: (id: string, updates: Partial<Opportunite>): Opportunite | null => {
-    const opportunites = opportuniteService.getAll();
-    const index = opportunites.findIndex(o => o.id === id);
-    if (index === -1) return null;
-    
-    opportunites[index] = { ...opportunites[index], ...updates };
-    localStorage.setItem(STORAGE_KEYS.OPPORTUNITES, JSON.stringify(opportunites));
-    return opportunites[index];
-  },
-
-  delete: (id: string): boolean => {
-    const opportunites = opportuniteService.getAll();
-    const filtered = opportunites.filter(o => o.id !== id);
-    localStorage.setItem(STORAGE_KEYS.OPPORTUNITES, JSON.stringify(filtered));
-    return filtered.length < opportunites.length;
-  },
-
-  getByStatus: (status: Opportunite['statut']): Opportunite[] => {
-    const opportunites = opportuniteService.getAll();
-    return opportunites.filter(o => o.statut === status);
-  },
 };
 
-// Service pour les contacts
+/* =======================
+   CONTACT SERVICE
+======================= */
 export const contactService = {
   getAll: (): Contact[] => {
     const data = localStorage.getItem(STORAGE_KEYS.CONTACTS);
     return data ? JSON.parse(data) : [];
-  },
-
-  getById: (id: string): Contact | undefined => {
-    const contacts = contactService.getAll();
-    return contacts.find(c => c.id === id);
-  },
-
-  getByClientId: (clientId: string): Contact[] => {
-    const contacts = contactService.getAll();
-    return contacts.filter(c => c.clientId === clientId).sort((a, b) => 
-      new Date(b.date).getTime() - new Date(a.date).getTime()
-    );
-  },
-
-  create: (contact: Omit<Contact, 'id'>): Contact => {
-    const contacts = contactService.getAll();
-    const newContact: Contact = {
-      ...contact,
-      id: Date.now().toString(),
-    };
-    contacts.push(newContact);
-    localStorage.setItem(STORAGE_KEYS.CONTACTS, JSON.stringify(contacts));
-    return newContact;
-  },
-
-  delete: (id: string): boolean => {
-    const contacts = contactService.getAll();
-    const filtered = contacts.filter(c => c.id !== id);
-    localStorage.setItem(STORAGE_KEYS.CONTACTS, JSON.stringify(filtered));
-    return filtered.length < contacts.length;
   },
 };
