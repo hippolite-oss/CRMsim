@@ -7,6 +7,7 @@ import Opportunites from './pages/Opportunites';
 import OpportuniteForm from './pages/OpportuniteForm';
 import Contacts from './pages/Contacts';
 import ContactForm from './pages/ContactForm';
+import Projets from './pages/Projets';
 
 function App() {
   return (
@@ -21,6 +22,7 @@ function App() {
           <Route path="opportunites/nouvelle" element={<OpportuniteForm />} />
           <Route path="opportunites/:id/edit" element={<OpportuniteForm />} />
           <Route path="contacts" element={<Contacts />} />
+          <Route path="Projets" element={<Projets />} />
           <Route path="contacts/nouveau" element={<ContactForm />} />
         </Route>
       </Routes>
