@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { 
   ArrowLeft, Target, DollarSign, Calendar, 
@@ -12,24 +12,238 @@ import Button from '../components/Button';
 import Alert from '../components/Alert';
 import { opportuniteService } from '../services/storageService';
 import { clientService } from '../services/storageService';
-import { Opportunite, OpportuniteStatus } from '../types';
+import { Opportunite, OpportuniteStatus, Client } from '../types';
+
+// Constantes pour éviter la recréation à chaque rendu
+const STATUT_OPTIONS = [
+  { value: 'Nouveau', color: 'from-blue-500 to-cyan-600', label: 'Nouveau', icon: TrendingUp },
+  { value: 'En cours', color: 'from-yellow-500 to-amber-600', label: 'En cours', icon: Clock },
+  { value: 'Gagné', color: 'from-green-500 to-emerald-600', label: 'Gagné', icon: Award },
+  { value: 'Perdu', color: 'from-red-500 to-rose-600', label: 'Perdu', icon: TrendingDown },
+] as const;
+
+const PRIORITE_OPTIONS = [
+  { value: 'Faible', color: 'from-gray-400 to-gray-600', label: 'Faible' },
+  { value: 'Moyenne', color: 'from-blue-400 to-blue-600', label: 'Moyenne' },
+  { value: 'Haute', color: 'from-red-400 to-red-600', label: 'Haute' },
+] as const;
+
+const TYPE_OPTIONS = [
+  { value: 'Nouveau', label: 'Nouveau client' },
+  { value: 'Existant', label: 'Client existant' },
+  { value: 'Renouvellement', label: 'Renouvellement' },
+] as const;
+
+const SOURCE_OPTIONS = [
+  { value: 'Site Web', label: 'Site Web' },
+  { value: 'Réseaux Sociaux', label: 'Réseaux Sociaux' },
+  { value: 'Recommandation', label: 'Recommandation' },
+  { value: 'Appel Froid', label: 'Appel Froid' },
+  { value: 'Salon', label: 'Salon/Événement' },
+] as const;
+
+// Type pour le formulaire
+type FormData = {
+  titre: string;
+  clientId: string;
+  montant: string;
+  statut: OpportuniteStatus;
+  dateClotureEstimee: string;
+  description: string;
+  probabilite: string;
+  priorite: 'Faible' | 'Moyenne' | 'Haute';
+  type: 'Nouveau' | 'Existant' | 'Renouvellement';
+  source: 'Site Web' | 'Réseaux Sociaux' | 'Recommandation' | 'Appel Froid' | 'Salon';
+  notes: string;
+};
+
+// Composant pour les champs de formulaire
+const FormField = ({
+  label,
+  icon: Icon,
+  children,
+  error,
+  required = false,
+}: {
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  children: React.ReactNode;
+  error?: string;
+  required?: boolean;
+}) => (
+  <motion.div
+    initial={{ opacity: 0, y: 10 }}
+    animate={{ opacity: 1, y: 0 }}
+    className="relative"
+  >
+    <label className="block text-sm font-medium text-gray-700 mb-2">
+      <div className="flex items-center gap-2">
+        <Icon className="h-4 w-4 text-gray-400" />
+        {label} {required && <span className="text-red-500">*</span>}
+      </div>
+    </label>
+    {children}
+    {error && (
+      <motion.p 
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="mt-2 text-sm text-red-600 flex items-center gap-1"
+      >
+        <AlertCircle className="h-4 w-4" />
+        {error}
+      </motion.p>
+    )}
+  </motion.div>
+);
+
+// Composant de prévisualisation
+const PreviewPanel = ({ 
+  formData, 
+  client 
+}: { 
+  formData: FormData; 
+  client?: Client;
+}) => {
+  const formatCurrency = (amount: string) => {
+    const num = parseFloat(amount);
+    if (isNaN(num)) return '€0';
+    
+    return new Intl.NumberFormat('fr-FR', {
+      style: 'currency',
+      currency: 'EUR',
+      minimumFractionDigits: 0,
+    }).format(num);
+  };
+
+  const getStatutIcon = (statut: string) => {
+    const option = STATUT_OPTIONS.find(s => s.value === statut);
+    return option?.icon || Target;
+  };
+
+  const StatutIcon = getStatutIcon(formData.statut);
+  const statutOption = STATUT_OPTIONS.find(s => s.value === formData.statut);
+
+  return (
+    <motion.div
+      whileHover={{ y: -2 }}
+      className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6"
+    >
+      <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+        <Sparkles className="h-5 w-5 text-blue-600" />
+        Aperçu de l'opportunité
+      </h3>
+      
+      {client ? (
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-xl">
+            <div className="h-10 w-10 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-lg flex items-center justify-center text-white font-bold">
+              {client.nom.charAt(0)}
+            </div>
+            <div>
+              <p className="font-semibold text-gray-900">{client.nom}</p>
+              <p className="text-sm text-gray-600">{client.entreprise || 'Aucune entreprise'}</p>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-gray-600">Statut</span>
+              <div className="flex items-center gap-2">
+                <div className={`p-1.5 rounded-lg bg-gradient-to-br ${statutOption?.color}`}>
+                  <StatutIcon className="h-4 w-4 text-white" />
+                </div>
+                <span className="font-medium text-gray-900">{formData.statut}</span>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-gray-600">Montant estimé</span>
+              <span className="font-bold text-lg text-gray-900">
+                {formatCurrency(formData.montant)}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-gray-600">Probabilité</span>
+              <div className="flex items-center gap-2">
+                <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <motion.div
+                    className={`h-full ${
+                      Number(formData.probabilite) > 70 ? 'bg-green-500' :
+                      Number(formData.probabilite) > 40 ? 'bg-yellow-500' : 'bg-red-500'
+                    }`}
+                    initial={{ width: 0 }}
+                    animate={{ width: `${formData.probabilite}%` }}
+                    transition={{ duration: 1 }}
+                  />
+                </div>
+                <span className="font-medium text-gray-900">{formData.probabilite}%</span>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-gray-600">Priorité</span>
+              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                formData.priorite === 'Haute' ? 'bg-red-100 text-red-800' :
+                formData.priorite === 'Moyenne' ? 'bg-blue-100 text-blue-800' :
+                'bg-gray-100 text-gray-800'
+              }`}>
+                {formData.priorite}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-gray-600">Date de clôture</span>
+              <span className="font-medium text-gray-900">
+                {formData.dateClotureEstimee 
+                  ? new Date(formData.dateClotureEstimee).toLocaleDateString('fr-FR', {
+                      weekday: 'long',
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
+                    })
+                  : 'Non définie'}
+              </span>
+            </div>
+
+            {formData.description && (
+              <div>
+                <span className="text-gray-600 block mb-1">Description</span>
+                <p className="text-sm text-gray-900 bg-gray-50 p-3 rounded-lg">
+                  {formData.description}
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="text-center py-8">
+          <Target className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+          <p className="text-gray-500">
+            Sélectionnez un client pour voir l'aperçu
+          </p>
+        </div>
+      )}
+    </motion.div>
+  );
+};
 
 const OpportuniteForm = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const isEdit = Boolean(id);
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormData>({
     titre: '',
     clientId: '',
     montant: '',
-    statut: 'Nouveau' as OpportuniteStatus,
+    statut: 'Nouveau',
     dateClotureEstimee: '',
     description: '',
     probabilite: '50',
-    priorite: 'Moyenne' as 'Faible' | 'Moyenne' | 'Haute',
-    type: 'Nouveau' as 'Nouveau' | 'Existant' | 'Renouvellement',
-    source: 'Site Web' as 'Site Web' | 'Réseaux Sociaux' | 'Recommandation' | 'Appel Froid' | 'Salon',
+    priorite: 'Moyenne',
+    type: 'Nouveau',
+    source: 'Site Web',
     notes: '',
   });
 
@@ -39,37 +253,15 @@ const OpportuniteForm = () => {
   const [success, setSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
-  const [clients, setClients] = useState(clientService.getAll().filter(c => c.statut === 'Actif'));
+  const [clients, setClients] = useState<Client[]>([]);
 
-  const statutOptions = [
-    { value: 'Nouveau', color: 'from-blue-500 to-cyan-600', label: 'Nouveau', icon: TrendingUp },
-    { value: 'En cours', color: 'from-yellow-500 to-amber-600', label: 'En cours', icon: Clock },
-    { value: 'Gagné', color: 'from-green-500 to-emerald-600', label: 'Gagné', icon: Award },
-    { value: 'Perdu', color: 'from-red-500 to-rose-600', label: 'Perdu', icon: TrendingDown },
-  ];
+  // Charger les clients au montage
+  useEffect(() => {
+    const activeClients = clientService.getAll().filter(c => c.statut === 'Actif');
+    setClients(activeClients);
+  }, []);
 
-  const prioriteOptions = [
-    { value: 'Faible', color: 'from-gray-400 to-gray-600', label: 'Faible' },
-    { value: 'Moyenne', color: 'from-blue-400 to-blue-600', label: 'Moyenne' },
-    { value: 'Haute', color: 'from-red-400 to-red-600', label: 'Haute' },
-  ];
-
-  const typeOptions = [
-    { value: 'Nouveau', label: 'Nouveau client' },
-    { value: 'Existant', label: 'Client existant' },
-    { value: 'Renouvellement', label: 'Renouvellement' },
-  ];
-
-  const sourceOptions = [
-    { value: 'Site Web', label: 'Site Web' },
-    { value: 'Réseaux Sociaux', label: 'Réseaux Sociaux' },
-    { value: 'Recommandation', label: 'Recommandation' },
-    { value: 'Appel Froid', label: 'Appel Froid' },
-    { value: 'Salon', label: 'Salon/Événement' },
-  ];
-
-  const selectedClient = clients.find(c => c.id === formData.clientId);
-
+  // Charger l'opportunité en mode édition
   useEffect(() => {
     if (isEdit && id) {
       const opportunite = opportuniteService.getById(id);
@@ -93,7 +285,14 @@ const OpportuniteForm = () => {
     }
   }, [id, isEdit, navigate]);
 
-  const validate = () => {
+  // Mémoriser le client sélectionné
+  const selectedClient = useMemo(() => 
+    clients.find(c => c.id === formData.clientId),
+    [clients, formData.clientId]
+  );
+
+  // Validation du formulaire
+  const validate = useCallback(() => {
     const newErrors: Record<string, string> = {};
 
     if (!formData.titre.trim()) {
@@ -112,6 +311,14 @@ const OpportuniteForm = () => {
 
     if (!formData.dateClotureEstimee) {
       newErrors.dateClotureEstimee = 'La date de clôture estimée est requise';
+    } else {
+      const selectedDate = new Date(formData.dateClotureEstimee);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      if (selectedDate < today) {
+        newErrors.dateClotureEstimee = 'La date ne peut pas être dans le passé';
+      }
     }
 
     if (formData.probabilite && (Number(formData.probabilite) < 0 || Number(formData.probabilite) > 100)) {
@@ -120,8 +327,9 @@ const OpportuniteForm = () => {
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  };
+  }, [formData]);
 
+  // Gestion de la soumission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -142,6 +350,7 @@ const OpportuniteForm = () => {
         probabilite: Number(formData.probabilite),
         dateClotureEstimee: new Date(formData.dateClotureEstimee).toISOString(),
         dateCreation: isEdit ? undefined : new Date().toISOString(),
+        dateModification: new Date().toISOString(),
       };
 
       if (isEdit && id) {
@@ -161,14 +370,21 @@ const OpportuniteForm = () => {
           });
         }
       } else {
-        opportuniteService.create(opportuniteData);
-        setSuccess(true);
-        setAlert({ 
-          type: 'success', 
-          message: 'Opportunité créée avec succès !' 
-        });
-        
-        setTimeout(() => navigate('/opportunites'), 1500);
+        const created = opportuniteService.create(opportuniteData);
+        if (created) {
+          setSuccess(true);
+          setAlert({ 
+            type: 'success', 
+            message: 'Opportunité créée avec succès !' 
+          });
+          
+          setTimeout(() => navigate('/opportunites'), 1500);
+        } else {
+          setAlert({ 
+            type: 'error', 
+            message: 'Erreur lors de la création' 
+          });
+        }
       }
     } catch (error) {
       setAlert({ 
@@ -181,7 +397,8 @@ const OpportuniteForm = () => {
     }
   };
 
-  const handleInputChange = (field: string, value: string) => {
+  // Gestion des changements de champ
+  const handleInputChange = useCallback((field: keyof FormData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     
     if (errors[field]) {
@@ -191,23 +408,16 @@ const OpportuniteForm = () => {
         return newErrors;
       });
     }
-  };
+  }, [errors]);
 
-  const formatCurrency = (amount: string) => {
-    const num = parseFloat(amount);
-    if (isNaN(num)) return '€0';
-    
-    return new Intl.NumberFormat('fr-FR', {
-      style: 'currency',
-      currency: 'EUR',
-      minimumFractionDigits: 0,
-    }).format(num);
-  };
-
-  const getStatutIcon = (statut: string) => {
-    const option = statutOptions.find(s => s.value === statut);
-    return option?.icon || Target;
-  };
+  // Conseils mémorisés
+  const tips = useMemo(() => [
+    'Définissez un titre clair et descriptif',
+    'Estimez le montant au plus juste',
+    'Mettez à jour régulièrement la probabilité',
+    'Une date de clôture réaliste augmente les chances',
+    'Priorisez les opportunités les plus prometteuses'
+  ], []);
 
   return (
     <motion.div
@@ -320,18 +530,12 @@ const OpportuniteForm = () => {
 
             <form onSubmit={handleSubmit} className="p-6 space-y-6">
               {/* Titre */}
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-                className="relative"
+              <FormField
+                label="Titre de l'opportunité"
+                icon={Briefcase}
+                error={errors.titre}
+                required
               >
-                <label htmlFor="titre" className="block text-sm font-medium text-gray-700 mb-2">
-                  <div className="flex items-center gap-2">
-                    <Briefcase className="h-4 w-4 text-gray-400" />
-                    Titre de l'opportunité <span className="text-red-500">*</span>
-                  </div>
-                </label>
                 <div className="relative">
                   <input
                     type="text"
@@ -347,32 +551,16 @@ const OpportuniteForm = () => {
                   />
                   <Briefcase className="absolute left-4 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 </div>
-                {errors.titre && (
-                  <motion.p 
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="mt-2 text-sm text-red-600 flex items-center gap-1"
-                  >
-                    <AlertCircle className="h-4 w-4" />
-                    {errors.titre}
-                  </motion.p>
-                )}
-              </motion.div>
+              </FormField>
 
               {/* Client et Montant */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.4 }}
-                  className="relative"
+                <FormField
+                  label="Client"
+                  icon={User}
+                  error={errors.clientId}
+                  required
                 >
-                  <label htmlFor="clientId" className="block text-sm font-medium text-gray-700 mb-2">
-                    <div className="flex items-center gap-2">
-                      <User className="h-4 w-4 text-gray-400" />
-                      Client <span className="text-red-500">*</span>
-                    </div>
-                  </label>
                   <div className="relative">
                     <select
                       id="clientId"
@@ -396,30 +584,14 @@ const OpportuniteForm = () => {
                       <div className="w-2 h-2 rounded-full bg-gray-300" />
                     </div>
                   </div>
-                  {errors.clientId && (
-                    <motion.p 
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="mt-2 text-sm text-red-600 flex items-center gap-1"
-                    >
-                      <AlertCircle className="h-4 w-4" />
-                      {errors.clientId}
-                    </motion.p>
-                  )}
-                </motion.div>
+                </FormField>
 
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.5 }}
-                  className="relative"
+                <FormField
+                  label="Montant estimé (€)"
+                  icon={DollarSign}
+                  error={errors.montant}
+                  required
                 >
-                  <label htmlFor="montant" className="block text-sm font-medium text-gray-700 mb-2">
-                    <div className="flex items-center gap-2">
-                      <DollarSign className="h-4 w-4 text-gray-400" />
-                      Montant estimé (€) <span className="text-red-500">*</span>
-                    </div>
-                  </label>
                   <div className="relative">
                     <input
                       type="number"
@@ -437,17 +609,7 @@ const OpportuniteForm = () => {
                     />
                     <DollarSign className="absolute left-4 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                   </div>
-                  {errors.montant && (
-                    <motion.p 
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="mt-2 text-sm text-red-600 flex items-center gap-1"
-                    >
-                      <AlertCircle className="h-4 w-4" />
-                      {errors.montant}
-                    </motion.p>
-                  )}
-                </motion.div>
+                </FormField>
               </div>
 
               {/* Type et Source */}
@@ -462,7 +624,7 @@ const OpportuniteForm = () => {
                     Type d'opportunité
                   </label>
                   <div className="grid grid-cols-3 gap-2">
-                    {typeOptions.map((option) => (
+                    {TYPE_OPTIONS.map((option) => (
                       <motion.button
                         key={option.value}
                         type="button"
@@ -497,7 +659,7 @@ const OpportuniteForm = () => {
                       onChange={(e) => handleInputChange('source', e.target.value)}
                       className="w-full px-4 pl-11 py-3 border border-gray-300 rounded-xl hover:border-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200 appearance-none"
                     >
-                      {sourceOptions.map((option) => (
+                      {SOURCE_OPTIONS.map((option) => (
                         <option key={option.value} value={option.value}>
                           {option.label}
                         </option>
@@ -520,7 +682,7 @@ const OpportuniteForm = () => {
                     Statut <span className="text-red-500">*</span>
                   </label>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                    {statutOptions.map((option) => {
+                    {STATUT_OPTIONS.map((option) => {
                       const Icon = option.icon;
                       
                       return (
@@ -544,18 +706,11 @@ const OpportuniteForm = () => {
                   </div>
                 </motion.div>
 
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.9 }}
-                  className="relative"
+                <FormField
+                  label="Probabilité de succès (%)"
+                  icon={Percent}
+                  error={errors.probabilite}
                 >
-                  <label htmlFor="probabilite" className="block text-sm font-medium text-gray-700 mb-2">
-                    <div className="flex items-center gap-2">
-                      <Percent className="h-4 w-4 text-gray-400" />
-                      Probabilité de succès (%)
-                    </div>
-                  </label>
                   <div className="space-y-2">
                     <input
                       type="range"
@@ -572,18 +727,8 @@ const OpportuniteForm = () => {
                       <span className="font-bold text-lg text-blue-600">{formData.probabilite}%</span>
                       <span className="text-sm text-gray-500">100%</span>
                     </div>
-                    {errors.probabilite && (
-                      <motion.p 
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="mt-2 text-sm text-red-600 flex items-center gap-1"
-                      >
-                        <AlertCircle className="h-4 w-4" />
-                        {errors.probabilite}
-                      </motion.p>
-                    )}
                   </div>
-                </motion.div>
+                </FormField>
               </div>
 
               {/* Priorité et Date */}
@@ -598,7 +743,7 @@ const OpportuniteForm = () => {
                     Priorité
                   </label>
                   <div className="grid grid-cols-3 gap-2">
-                    {prioriteOptions.map((option) => (
+                    {PRIORITE_OPTIONS.map((option) => (
                       <motion.button
                         key={option.value}
                         type="button"
@@ -617,18 +762,12 @@ const OpportuniteForm = () => {
                   </div>
                 </motion.div>
 
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 1.1 }}
-                  className="relative"
+                <FormField
+                  label="Date de clôture estimée"
+                  icon={Calendar}
+                  error={errors.dateClotureEstimee}
+                  required
                 >
-                  <label htmlFor="dateClotureEstimee" className="block text-sm font-medium text-gray-700 mb-2">
-                    <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4 text-gray-400" />
-                      Date de clôture estimée <span className="text-red-500">*</span>
-                    </div>
-                  </label>
                   <div className="relative">
                     <input
                       type="date"
@@ -643,32 +782,11 @@ const OpportuniteForm = () => {
                     />
                     <Calendar className="absolute left-4 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                   </div>
-                  {errors.dateClotureEstimee && (
-                    <motion.p 
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="mt-2 text-sm text-red-600 flex items-center gap-1"
-                    >
-                      <AlertCircle className="h-4 w-4" />
-                      {errors.dateClotureEstimee}
-                    </motion.p>
-                  )}
-                </motion.div>
+                </FormField>
               </div>
 
-              {/* Description */}
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 1.2 }}
-                className="relative"
-              >
-                <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-2">
-                  <div className="flex items-center gap-2">
-                    <FileText className="h-4 w-4 text-gray-400" />
-                    Description
-                  </div>
-                </label>
+              {/* Description et Notes */}
+              <FormField label="Description" icon={FileText}>
                 <div className="relative">
                   <textarea
                     id="description"
@@ -680,9 +798,8 @@ const OpportuniteForm = () => {
                   />
                   <FileText className="absolute left-4 top-4 h-4 w-4 text-gray-400" />
                 </div>
-              </motion.div>
+              </FormField>
 
-              {/* Notes */}
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -726,7 +843,7 @@ const OpportuniteForm = () => {
                 <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                   <Button 
                     type="submit" 
-                    disabled={loading}
+                    disabled={loading || isSubmitting}
                     className="relative overflow-hidden w-full sm:w-auto bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700"
                   >
                     {isSubmitting ? (
@@ -769,116 +886,7 @@ const OpportuniteForm = () => {
             transition={{ delay: 0.3 }}
             className="space-y-6"
           >
-            {/* Aperçu de l'opportunité */}
-            <motion.div
-              whileHover={{ y: -2 }}
-              className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6"
-            >
-              <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-blue-600" />
-                Aperçu de l'opportunité
-              </h3>
-              
-              {selectedClient ? (
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-xl">
-                    <div className="h-10 w-10 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-lg flex items-center justify-center text-white font-bold">
-                      {selectedClient.nom.charAt(0)}
-                    </div>
-                    <div>
-                      <p className="font-semibold text-gray-900">{selectedClient.nom}</p>
-                      <p className="text-sm text-gray-600">{selectedClient.entreprise || 'Aucune entreprise'}</p>
-                    </div>
-                  </div>
-
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-600">Statut</span>
-                      <div className="flex items-center gap-2">
-                        {(() => {
-                          const StatutIcon = getStatutIcon(formData.statut);
-                          const statutOption = statutOptions.find(s => s.value === formData.statut);
-                          return (
-                            <>
-                              <div className={`p-1.5 rounded-lg bg-gradient-to-br ${statutOption?.color}`}>
-                                <StatutIcon className="h-4 w-4 text-white" />
-                              </div>
-                              <span className="font-medium text-gray-900">{formData.statut}</span>
-                            </>
-                          );
-                        })()}
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-600">Montant estimé</span>
-                      <span className="font-bold text-lg text-gray-900">
-                        {formatCurrency(formData.montant)}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-600">Probabilité</span>
-                      <div className="flex items-center gap-2">
-                        <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
-                          <motion.div
-                            className={`h-full ${
-                              Number(formData.probabilite) > 70 ? 'bg-green-500' :
-                              Number(formData.probabilite) > 40 ? 'bg-yellow-500' : 'bg-red-500'
-                            }`}
-                            initial={{ width: 0 }}
-                            animate={{ width: `${formData.probabilite}%` }}
-                            transition={{ duration: 1 }}
-                          />
-                        </div>
-                        <span className="font-medium text-gray-900">{formData.probabilite}%</span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-600">Priorité</span>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        formData.priorite === 'Haute' ? 'bg-red-100 text-red-800' :
-                        formData.priorite === 'Moyenne' ? 'bg-blue-100 text-blue-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}>
-                        {formData.priorite}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-600">Date de clôture</span>
-                      <span className="font-medium text-gray-900">
-                        {formData.dateClotureEstimee 
-                          ? new Date(formData.dateClotureEstimee).toLocaleDateString('fr-FR', {
-                              weekday: 'long',
-                              year: 'numeric',
-                              month: 'long',
-                              day: 'numeric'
-                            })
-                          : 'Non définie'}
-                      </span>
-                    </div>
-
-                    {formData.description && (
-                      <div>
-                        <span className="text-gray-600 block mb-1">Description</span>
-                        <p className="text-sm text-gray-900 bg-gray-50 p-3 rounded-lg">
-                          {formData.description}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <Target className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                  <p className="text-gray-500">
-                    Sélectionnez un client pour voir l'aperçu
-                  </p>
-                </div>
-              )}
-            </motion.div>
+            <PreviewPanel formData={formData} client={selectedClient} />
 
             {/* Conseils */}
             <motion.div
@@ -887,13 +895,7 @@ const OpportuniteForm = () => {
             >
               <h3 className="text-lg font-bold text-blue-900 mb-4">Conseils</h3>
               <ul className="space-y-3">
-                {[
-                  'Définissez un titre clair et descriptif',
-                  'Estimez le montant au plus juste',
-                  'Mettez à jour régulièrement la probabilité',
-                  'Une date de clôture réaliste augmente les chances',
-                  'Priorisez les opportunités les plus prometteuses'
-                ].map((tip, index) => (
+                {tips.map((tip, index) => (
                   <motion.li
                     key={index}
                     initial={{ opacity: 0, x: -10 }}
