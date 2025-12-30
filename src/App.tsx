@@ -25,6 +25,7 @@ import Otp from './pages/Otp';
 import Users from './pages/Users';
 import Login from './pages/Login';
 import ForgotPassword from './pages/Forgotpassword';
+import Commande from './pages/Commande';
 
 // Layout pour les pages avec sidebar
 const MainLayout = () => {
@@ -57,8 +58,18 @@ const App = () => {
           <Route path="/home" element={<Home />} />
           <Route path="/otp" element={<Otp />} />
            <Route path="/login" element={<Login />} />
+           <Route path="/commande" element={<Commande/>}/>
             <Route path="/password" element={<ForgotPassword />} />
         </Route>
+
+        {/* Routes protégées avec Layout */}
+      <Route
+        path="/admin"
+        element={
+          <ProtectedRoute>
+            <Layout />
+          </ProtectedRoute>
+        }
 
         {/* Routes avec sidebar */}
         <Route element={<MainLayout />}>

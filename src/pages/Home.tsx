@@ -5,71 +5,90 @@ import {
   BarChart3, Shield, Clock, Phone, ArrowRight,
   Mail, MapPin, Facebook, Twitter, Instagram, Linkedin,
   Activity, Target, Award, CheckCircle, Zap,
-  MessageSquare, Calendar, Settings, Cloud, Lock
+  MessageSquare, Calendar, Settings, Cloud, Lock,
+  Star, Package, ShoppingBag, Tag
 } from 'lucide-react';
 import { motion, useAnimation, useInView } from 'framer-motion';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 
-
 const Home = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [featuredProducts, setFeaturedProducts] = useState([]);
 
   const heroRef = useRef(null);
   const featuresRef = useRef(null);
+  const productsRef = useRef(null);
   const dashboardRef = useRef(null);
   const contactRef = useRef(null);
 
   const controls = {
     hero: useAnimation(),
     features: useAnimation(),
+    products: useAnimation(),
     dashboard: useAnimation(),
     contact: useAnimation()
   };
 
   const heroInView = useInView(heroRef, { once: true });
   const featuresInView = useInView(featuresRef, { once: true });
+  const productsInView = useInView(productsRef, { once: true });
   const dashboardInView = useInView(dashboardRef, { once: true });
   const contactInView = useInView(contactRef, { once: true });
 
-  // Slides pour le hero
+  // Slides pour le hero avec chemins depuis le dossier public
   const slides = [
     { 
-      image: "crm-bg1.jpg", 
+      image: "/i1.jpg", 
       title: "Gérez vos relations client efficacement", 
       subtitle: "Augmentez vos ventes de 45% avec notre CRM intelligent", 
       cta: "Essai gratuit 30 jours" 
     },
     { 
-      image: "crm-bg2.jpg", 
+      image: "/i2.jpg", 
       title: "Automatisez vos processus commerciaux", 
       subtitle: "Réduisez le temps administratif de 70%", 
       cta: "Voir les fonctionnalités" 
     },
     { 
-      image: "crm-bg3.jpg", 
+      image: "/i3.jpg", 
       title: "Suivez vos performances en temps réel", 
       subtitle: "Tableaux de bord personnalisés pour une meilleure prise de décision", 
       cta: "Découvrir les rapports" 
     }
   ];
 
-  // Statistiques du CRM (à récupérer depuis l'API)
-  const fetchStats = async () => {
-    try {
-      setLoading(true);
-      const res = await Axios.get('/api/dashboard/stats');
-      if (res.data.success) {
-        setStats(res.data.data);
-      }
-    } catch (error) {
-      console.error('Erreur chargement stats:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Produits phares simplifiés
+  const featuredProductsData = [
+    {
+      id: 1,
+      name: "CRM Enterprise Pro",
+      price: "2500FCFA",
+      image: "a1.jpg",
+    },
+    {
+      id: 2,
+      name: "CRM Business",
+      price: "1000FCFA",
+      image: "f2.jpg",
+    },
+    {
+      id: 3,
+      name: "CRM Starter",
+      price: "5000FCFA",
+      image: "a3.jpg",
+    },
+    {
+      id: 4,
+      name: "CRM Mobile",
+      price: "2000FCFA",
+      image: "f5.png",
+    },
+   
+  
+  ];
 
   // Fonctionnalités principales
   const features = [
@@ -168,22 +187,24 @@ const Home = () => {
     return () => clearInterval(interval);
   }, []);
 
+  // Simuler le chargement des produits
   useEffect(() => {
-    fetchStats();
+    setFeaturedProducts(featuredProductsData);
   }, []);
 
   useEffect(() => {
     if (heroInView) controls.hero.start({ opacity: 1, y: 0 });
     if (featuresInView) controls.features.start({ opacity: 1, y: 0 });
+    if (productsInView) controls.products.start({ opacity: 1, y: 0 });
     if (dashboardInView) controls.dashboard.start({ opacity: 1, y: 0 });
     if (contactInView) controls.contact.start({ opacity: 1, y: 0 });
-  }, [heroInView, featuresInView, dashboardInView, contactInView]);
+  }, [heroInView, featuresInView, productsInView, dashboardInView, contactInView]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white overflow-x-hidden">
       <Header />
 
-      {/* Hero Section CRM */}
+      {/* Hero Section CRM - Sans filtre */}
       <section id="accueil" className="pt-16 md:pt-20" ref={heroRef}>
         <div className="relative h-[50vh] md:h-[60vh] lg:h-[70vh] overflow-hidden">
           {slides.map((slide, index) => (
@@ -197,16 +218,18 @@ const Home = () => {
               transition={{ duration: 1.2, ease: "easeInOut" }}
               className="absolute inset-0"
             >
+              {/* Image de fond sans filtre */}
               <div
                 className="absolute inset-0 bg-cover bg-center"
                 style={{
-                  backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url(${slide.image})`,
+                  backgroundImage: `url(${slide.image})`,
                   transform: `scale(${index === currentSlide ? 1 : 1.05})`,
                   transition: 'transform 10s ease-out'
                 }}
-              >
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-900/50 to-primary-900/50"></div>
-              </div>
+              />
+              
+              {/* Overlay léger seulement pour améliorer la lisibilité du texte */}
+              <div className="absolute inset-0 bg-black/20"></div>
 
               <div className="relative h-full flex items-center">
                 <div className="container mx-auto px-4 md:px-6 lg:px-8">
@@ -216,14 +239,14 @@ const Home = () => {
                     transition={{ delay: 0.3, duration: 0.8 }}
                     className="max-w-xl md:max-w-2xl text-white"
                   >
-                    <span className="inline-block px-4 py-2 bg-blue-600/30 backdrop-blur-sm rounded-full text-sm font-semibold mb-4 border border-white/20 flex items-center gap-2">
+                    <span className="inline-block px-4 py-2 bg-blue-600/80 backdrop-blur-sm rounded-full text-sm font-semibold mb-4 border border-white/20 flex items-center gap-2">
                       <Zap className="h-4 w-4" />
-                      NOUVEAU : Intelligence Artificielle intégrée
+                      NOUVEAU!
                     </span>
-                    <h1 className="text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold mb-4 leading-tight">
+                    <h1 className="text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold mb-4 leading-tight text-white drop-shadow-lg">
                       {slide.title}
                     </h1>
-                    <p className="text-lg md:text-xl lg:text-2xl mb-6 opacity-90">
+                    <p className="text-lg md:text-xl lg:text-2xl mb-6 text-white drop-shadow-lg">
                       {slide.subtitle}
                     </p>
                     <div className="flex flex-col sm:flex-row gap-4 mb-2">
@@ -234,7 +257,7 @@ const Home = () => {
                         </span>
                         <div className="absolute inset-0 bg-gradient-to-r from-blue-700 to-primary-800 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                       </button>
-                      <button className="group bg-white/10 backdrop-blur-sm border border-white/30 text-white px-6 py-3 md:px-8 md:py-4 rounded-xl text-base font-semibold hover:bg-white/20 transition-all duration-300">
+                      <button className="group bg-white/20 backdrop-blur-sm border border-white/30 text-white px-6 py-3 md:px-8 md:py-4 rounded-xl text-base font-semibold hover:bg-white/30 transition-all duration-300">
                         <span className="flex items-center justify-center gap-2">
                           <Phone className="h-5 w-5 group-hover:animate-pulse" />
                           Demander une démo
@@ -243,16 +266,16 @@ const Home = () => {
                     </div>
                     <div className="flex items-center gap-6 mt-8">
                       <div className="flex items-center gap-2">
-                        <CheckCircle className="h-5 w-5 text-green-400" />
-                        <span className="text-sm">Sans engagement</span>
+                        <CheckCircle className="h-5 w-5 text-green-300" />
+                        <span className="text-sm text-white drop-shadow">Sans engagement</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <CheckCircle className="h-5 w-5 text-green-400" />
-                        <span className="text-sm">Configuration gratuite</span>
+                        <CheckCircle className="h-5 w-5 text-green-300" />
+                        <span className="text-sm text-white drop-shadow">Configuration gratuite</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <CheckCircle className="h-5 w-5 text-green-400" />
-                        <span className="text-sm">Support 24/7</span>
+                        <CheckCircle className="h-5 w-5 text-green-300" />
+                        <span className="text-sm text-white drop-shadow">Support 24/7</span>
                       </div>
                     </div>
                   </motion.div>
@@ -368,6 +391,69 @@ const Home = () => {
               </motion.div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* Section Produits Phares - Simplifiée */}
+      <section id="produits" className="py-16 md:py-24 bg-white" ref={productsRef}>
+        <div className="container mx-auto px-4 md:px-6 lg:px-8">
+          <motion.div
+            initial={{ opacity: 0, y: 50 }}
+            animate={controls.products}
+            className="text-center mb-12 md:mb-16"
+          >
+            <span className="inline-block px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-full font-semibold text-sm mb-4">
+              Nos Solutions
+            </span>
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4">Produits Phares</h2>
+            <p className="text-lg md:text-xl text-gray-600 max-w-2xl mx-auto">
+              Découvrez nos meilleures solutions CRM
+            </p>
+          </motion.div>
+
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+            {featuredProducts.map((product, index) => (
+              <motion.div
+                key={product.id}
+                initial={{ opacity: 0, y: 50 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.1 }}
+                whileHover={{ scale: 1.05 }}
+                className="group relative overflow-hidden rounded-xl shadow-md hover:shadow-xl transition-all duration-300"
+              >
+                {/* Image du produit */}
+                <div className="relative aspect-square overflow-hidden bg-gray-100">
+                  <img
+                    src={product.image}
+                    alt={product.name}
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                  />
+                  
+                  {/* Prix superposé sur l'image */}
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3">
+                    <div className="flex flex-col">
+                      <span className="text-white text-sm font-medium truncate">{product.name}</span>
+                      <span className="text-white text-lg font-bold">{product.price}</span>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+
+          {/* Bouton Voir plus */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+            className="mt-12 text-center"
+          >
+            <button className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 to-cyan-600 text-white px-8 py-3 rounded-xl font-semibold hover:shadow-xl hover:scale-105 transition-all">
+              <ShoppingBag className="h-5 w-5" />
+              Voir tous nos produits
+              <ArrowRight className="h-5 w-5" />
+            </button>
+          </motion.div>
         </div>
       </section>
 
@@ -647,12 +733,12 @@ const Home = () => {
               </div>
 
               {/* Formulaire de contact */}
-              <div className="bg-gradient-to-br from-gray-0 to-white text-black rounded-2xl shadow-2xl p-8">
+              <div className="bg-gradient-to-br from-gray-900 to-black text-white rounded-2xl shadow-2xl p-8">
                 <h3 className="text-2xl font-bold mb-2">Demandez une démo gratuite</h3>
                 <form className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <label className="block text-sm font-medium text-gray-30 mb-2">Nom</label>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">Nom</label>
                       <input
                         type="text"
                         className="w-full px-4 py-3 bg-gray-800 rounded-lg border border-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"

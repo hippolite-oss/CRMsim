@@ -197,7 +197,7 @@ const NewClient = () => {
           </div>
 
           <button
-            onClick={() => navigate('/admin/clients')}
+            onClick={() => navigate('/clients')}
             className="flex items-center gap-2 px-5 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-xl transition"
           >
             <ArrowLeft className="w-5 h-5" />

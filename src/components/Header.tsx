@@ -130,7 +130,7 @@ const Header = () => {
                         </Link>
 
                         {/* Bouton Connexion Admin */}
-                        <Link to="/admin">
+                        <Link to="/login">
                             <button className="hidden md:flex items-center space-x-2 bg-white border-2 border-cyan-500 text-cyan-600 px-5 py-2.5 rounded-xl font-semibold hover:bg-cyan-50 hover:shadow-cyan-500/30 hover:shadow-lg hover:scale-105 transition-all duration-300 group">
                                 <span>Connexion</span>
                                 <User className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
