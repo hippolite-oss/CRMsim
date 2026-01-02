@@ -106,7 +106,7 @@ const Sidebar = ({ isOpen, onClose, onOpen }: SidebarProps) => {
         { title: "Mouvements", icon: ClipboardList, path: "/stock/mouvements" },
         { title: "Historique", icon: History, path: "/stock/historique" },
         { title: "Sortie Stock", icon: Box, path: "/stock/sortir" },
-         { title: "Ajouter Stock", icon: Box, path: "/stock/ajouter" },
+        { title: "Ajouter Stock", icon: Box, path: "/stock/ajouter" },
       ],
     },
     { id: "activites", title: "Activités", icon: Calendar, path: "/activites" },
@@ -126,6 +126,8 @@ const Sidebar = ({ isOpen, onClose, onOpen }: SidebarProps) => {
         { title: "Utilisateurs", icon: User, path: "/paramètres/utilisateurs" },
         { title: "Société", icon: Briefcase, path: "/paramètres/societe" },
         { title: "Centre", icon: Settings, path: "/paramètres/centre" },
+        { title: "Categories", icon: Settings, path: "/paramètres/categories" },
+        { title: "Marques", icon: Settings, path: "/paramètres/marques" }
       ],
     },
   ];
@@ -137,17 +139,17 @@ const Sidebar = ({ isOpen, onClose, onOpen }: SidebarProps) => {
       {!isOpen && (
         <button
           onClick={onOpen}
-          className="fixed top-4 left-4 z-50 p-2 bg-gray-900 text-white rounded-lg shadow-lg lg:hidden hover:bg-gray-800 transition-colors"
+          className="fixed top-4 left-4 z-50 p-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl shadow-2xl hover:shadow-purple-500/50 hover:scale-105 transition-all duration-200 lg:hidden"
           aria-label="Ouvrir le menu"
         >
           <Menu size={24} />
         </button>
       )}
 
-      {/* Overlay mobile (Fond grisé) */}
+      {/* Overlay mobile (Fond grisé avec effet de flou amélioré) */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-30 lg:hidden backdrop-blur-sm transition-opacity"
+          className="fixed inset-0 bg-black/60 z-30 lg:hidden backdrop-blur-md transition-opacity duration-300"
           onClick={onClose}
         />
       )}
@@ -157,8 +159,8 @@ const Sidebar = ({ isOpen, onClose, onOpen }: SidebarProps) => {
         aria-label="Menu principal"
         className={`
           fixed top-0 left-0 z-40 h-screen w-72
-          bg-gray-900 text-gray-100 shadow-xl
-          transform transition-transform duration-300 ease-in-out
+          bg-gradient-to-b from-slate-900 via-gray-900 to-slate-900 text-gray-100 shadow-2xl border-r border-slate-700
+          transform transition-all duration-300 ease-in-out
           ${isOpen ? "translate-x-0" : "-translate-x-full"}
           lg:translate-x-0 lg:relative
           
@@ -170,57 +172,57 @@ const Sidebar = ({ isOpen, onClose, onOpen }: SidebarProps) => {
         `}
       >
         {/* Header - Sticky pour rester visible lors du scroll */}
-        <div className="sticky top-0 z-10 flex items-center justify-between px-6 h-20 bg-gray-900 border-b border-gray-800">
+        <div className="sticky top-0 z-10 flex items-center justify-between px-6 h-20 bg-gradient-to-r from-slate-900 to-gray-900 border-b border-slate-700 shadow-lg">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-900/20">
-              <Briefcase className="text-white" />
+            <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-blue-500 rounded-2xl flex items-center justify-center shadow-xl shadow-purple-500/30 animate-pulse">
+              <Briefcase className="text-white w-6 h-6" />
             </div>
             <div>
-              <h1 className="font-bold text-lg leading-tight">UATM</h1>
-              <p className="text-xs text-gray-400">Gasa-formation</p>
+              <h1 className="font-bold text-xl leading-tight text-white">UATM</h1>
+              <p className="text-sm text-slate-400">Gasa-formation</p>
             </div>
           </div>
           {/* Bouton Fermer (Visible uniquement sur mobile) */}
           <button
             onClick={onClose}
-            className="lg:hidden p-2 rounded-lg hover:bg-gray-800 transition-colors text-gray-400 hover:text-white"
+            className="lg:hidden p-2 rounded-lg hover:bg-slate-800 transition-all duration-200 text-slate-400 hover:text-white hover:scale-110"
           >
             <X size={20} />
           </button>
         </div>
 
         {/* Menu - Pas de overflow ici pour utiliser celui du parent */}
-        <nav className="px-3 py-4 space-y-1">
+        <nav className="px-4 py-6 space-y-2">
           {menu.map((item) =>
             item.submenu ? (
               <div key={item.id}>
                 <button
                   onClick={() => toggle(item.id)}
-                  className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-gray-800 transition-colors"
+                  className="w-full flex items-center justify-between px-4 py-3 rounded-xl hover:bg-slate-800/50 hover:shadow-md transition-all duration-200 group"
                   aria-expanded={expanded[item.id]}
                 >
                   <div className="flex items-center gap-3">
-                    <item.icon className="w-5 h-5 text-gray-400" />
-                    <span className="font-medium">{item.title}</span>
+                    <item.icon className="w-5 h-5 text-slate-400 group-hover:text-purple-400 transition-colors" />
+                    <span className="font-medium text-slate-200 group-hover:text-white">{item.title}</span>
                   </div>
                   {expanded[item.id] ? (
-                    <ChevronDown className="w-4 h-4 text-gray-500" />
+                    <ChevronDown className="w-4 h-4 text-slate-500 group-hover:text-purple-400 transition-colors" />
                   ) : (
-                    <ChevronRight className="w-4 h-4 text-gray-500" />
+                    <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-purple-400 transition-colors" />
                   )}
                 </button>
 
                 {expanded[item.id] && (
-                  <div className="ml-6 mt-1 space-y-1 border-l border-gray-800 pl-4">
+                  <div className="ml-8 mt-2 space-y-1 border-l-2 border-purple-500/50 pl-4 animate-fadeIn">
                     {item.submenu.map((sub) => (
                       <Link
                         key={sub.path}
                         to={sub.path}
                         onClick={closeOnMobile}
-                        className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+                        className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm transition-all duration-200 hover:scale-105 ${
                           isActive(sub.path)
-                            ? "bg-blue-600/20 text-blue-400 font-medium"
-                            : "text-gray-400 hover:bg-gray-800 hover:text-gray-100"
+                            ? "bg-gradient-to-r from-purple-600/30 to-blue-600/30 text-purple-300 font-semibold shadow-md"
+                            : "text-slate-400 hover:bg-slate-800/70 hover:text-slate-100"
                         }`}
                       >
                         <sub.icon className="w-4 h-4" />
@@ -235,10 +237,10 @@ const Sidebar = ({ isOpen, onClose, onOpen }: SidebarProps) => {
                 key={item.id}
                 to={item.path!}
                 onClick={closeOnMobile}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 hover:scale-105 hover:shadow-md ${
                   isActive(item.path)
-                    ? "bg-blue-600/20 text-blue-400 font-medium"
-                    : "text-gray-300 hover:bg-gray-800 hover:text-gray-100"
+                    ? "bg-gradient-to-r from-purple-600/30 to-blue-600/30 text-purple-300 font-semibold shadow-lg"
+                    : "text-slate-300 hover:bg-slate-800/70 hover:text-white"
                 }`}
               >
                 <item.icon className="w-5 h-5" />
