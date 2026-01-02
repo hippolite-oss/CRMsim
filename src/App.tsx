@@ -29,6 +29,8 @@ import Dashboard from "./pages/Dashboard";
 import Layout from './pages/Layout';
 import AddStock from './pages/AddStock';
 import StockOut from './pages/StockOut';
+import AddMarques from "./pages/AddMarques";
+import AddCategories from "./pages/AddCategories";
 
 // Composant ProtectedRoute
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({
@@ -80,6 +82,8 @@ const App = () => {
           <Route path="/paramètres/societe" element={<CompanySettings />} />
           <Route path="/paramètres/general" element={<CompanySettings />} />
           <Route path="/paramètres/centre" element={<Centre />} />
+          <Route path="/paramètres/marques" element={<AddMarques />} />
+          <Route path="/paramètres/categories" element={<AddCategories/>} />
         </Route>
 
         {/* Redirection 404 */}
