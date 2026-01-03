@@ -161,6 +161,7 @@ const Header = () => {
               className="lg:hidden bg-white border-t border-gray-100 overflow-hidden"
             >
               <div className="p-4 space-y-3">
+                je pense que cest la 
                 {navItems.map((item) => (
                   <button
                     key={item.id}
